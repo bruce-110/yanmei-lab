@@ -15,9 +15,42 @@ import csv
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+import subprocess
+import sys
 
 # 加载环境变量
 load_dotenv()
+
+# 自动安装中文字体（仅 Streamlit Cloud 环境）
+def install_chinese_font():
+    """在 Streamlit Cloud 上自动安装中文字体"""
+    font_path = os.path.join(sys.prefix, "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages", "PIL", "fonts", "NotoSansSC-Regular.ttf")
+
+    # 如果字体已存在，跳过
+    if os.path.exists(font_path):
+        return font_path
+
+    try:
+        # 创建字体目录
+        os.makedirs(os.path.dirname(font_path), exist_ok=True)
+
+        # 下载字体（使用 GitHub Raw 镜像）
+        import urllib.request
+        print("[INFO] 正在下载中文字体...")
+        urllib.request.urlretrieve(
+            "https://raw.githubusercontent.com/StellarCN/scp_zh/master/fonts/NotoSansSC-Regular.ttf",
+            font_path
+        )
+        print(f"[INFO] 中文字体安装成功: {font_path}")
+        return font_path
+    except Exception as e:
+        print(f"[WARNING] 字体下载失败: {e}")
+        return None
+
+# 在导入后立即安装字体（仅一次）
+if 'chinese_font_installed' not in st.session_state:
+    install_chinese_font()
+    st.session_state.chinese_font_installed = True
 
 # 尝试导入 Firebase（如果可用则使用，否则使用本地文件）
 try:
@@ -435,15 +468,18 @@ def generate_long_image(original_image, result_data, lang_code):
         # 尝试加载字体（支持多种环境和中文显示）
         title_font = subtitle_font = text_font = small_font = tiny_font = None
 
+        # 构建下载字体路径（如果已安装）
+        downloaded_font_path = os.path.join(sys.prefix, "lib", f"python{sys.version_info.major}.{sys.version_info.minor}", "site-packages", "PIL", "fonts", "NotoSansSC-Regular.ttf")
+
         # 字体加载顺序（按优先级）
         font_attempts = [
-            # 1. 打包的字体文件（最可靠）
+            # 1. 自动下载的字体（Streamlit Cloud）
             {
-                'title': ("fonts/NotoSansSC-Regular.ttf", 72),
-                'subtitle': ("fonts/NotoSansSC-Regular.ttf", 48),
-                'text': ("fonts/NotoSansSC-Regular.ttf", 52),
-                'small': ("fonts/NotoSansSC-Regular.ttf", 44),
-                'tiny': ("fonts/NotoSansSC-Regular.ttf", 38)
+                'title': (downloaded_font_path, 72),
+                'subtitle': (downloaded_font_path, 48),
+                'text': (downloaded_font_path, 52),
+                'small': (downloaded_font_path, 44),
+                'tiny': (downloaded_font_path, 38)
             },
             # 2. macOS 系统字体
             {
@@ -452,6 +488,13 @@ def generate_long_image(original_image, result_data, lang_code):
                 'text': ("/System/Library/Fonts/PingFang.ttc", 52),
                 'small': ("/System/Library/Fonts/PingFang.ttc", 44),
                 'tiny': ("/System/Library/Fonts/PingFang.ttc", 38)
+            },
+            {
+                'title': ("/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 72),
+                'subtitle': ("/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 48),
+                'text': ("/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 52),
+                'small': ("/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 44),
+                'tiny': ("/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 38)
             },
             # 3. Linux 中文字体（按优先级）
             {

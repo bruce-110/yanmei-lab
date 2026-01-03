@@ -6,17 +6,29 @@ Firebase 配置文件
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
+import json
 
 # 初始化 Firebase（只初始化一次）
 if not firebase_admin._apps:
     try:
-        # 从环境变量或文件加载密钥
-        key_path = os.getenv('FIREBASE_KEY_PATH', 'firebase-key.json')
-        cred = credentials.Certificate(key_path)
+        # 方法 1：从环境变量读取 JSON 内容（适用于 Streamlit Cloud）
+        firebase_key_json = os.getenv('FIREBASE_KEY_JSON')
+        if firebase_key_json:
+            # 从环境变量的 JSON 字符串加载
+            key_dict = json.loads(firebase_key_json)
+            cred = credentials.Certificate(key_dict)
+            print("[DEBUG] Firebase 从环境变量初始化")
+        else:
+            # 方法 2：从文件加载（适用于本地开发）
+            key_path = os.getenv('FIREBASE_KEY_PATH', 'firebase-key.json')
+            cred = credentials.Certificate(key_path)
+            print(f"[DEBUG] Firebase 从文件初始化: {key_path}")
+
         firebase_admin.initialize_app(cred)
         print("[DEBUG] Firebase 初始化成功")
     except Exception as e:
         print(f"[DEBUG] Firebase 初始化失败: {e}")
+        print("[DEBUG] 将使用本地文件存储（数据不会持久化）")
         raise
 
 # 获取 Firestore 实例

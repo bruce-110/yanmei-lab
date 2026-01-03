@@ -453,6 +453,13 @@ def generate_long_image(original_image, result_data, lang_code):
                 'tiny': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 38)
             },
             {
+                'title': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttf", 72),
+                'subtitle': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttf", 48),
+                'text': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttf", 52),
+                'small': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttf", 44),
+                'tiny': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttf", 38)
+            },
+            {
                 'title': ("/usr/share/fonts/truetype/arphic/uming.ttc", 72),
                 'subtitle': ("/usr/share/fonts/truetype/arphic/uming.ttc", 48),
                 'text': ("/usr/share/fonts/truetype/arphic/uming.ttc", 52),
@@ -466,6 +473,13 @@ def generate_long_image(original_image, result_data, lang_code):
                 'small': ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 44),
                 'tiny': ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 38)
             },
+            {
+                'title': ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 72),
+                'subtitle': ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 48),
+                'text': ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 52),
+                'small': ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 44),
+                'tiny': ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 38)
+            },
             # Linux 英文字体（最后备选）
             {
                 'title': ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 72),
@@ -473,25 +487,32 @@ def generate_long_image(original_image, result_data, lang_code):
                 'text': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 52),
                 'small': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 44),
                 'tiny': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 38)
+            },
+            {
+                'title': ("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 72),
+                'subtitle': ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 48),
+                'text': ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 52),
+                'small': ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 44),
+                'tiny': ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 38)
             }
         ]
 
-        for font_set in font_attempts:
+        for i, font_set in enumerate(font_attempts):
             try:
                 title_font = ImageFont.truetype(font_set['title'][0], font_set['title'][1])
                 subtitle_font = ImageFont.truetype(font_set['subtitle'][0], font_set['subtitle'][1])
                 text_font = ImageFont.truetype(font_set['text'][0], font_set['text'][1])
                 small_font = ImageFont.truetype(font_set['small'][0], font_set['small'][1])
                 tiny_font = ImageFont.truetype(font_set['tiny'][0], font_set['tiny'][1])
-                print(f"[DEBUG] 成功加载字体: {font_set['title'][0]}")
+                print(f"[DEBUG] ✅ 成功加载字体 (选项{i+1}): {font_set['title'][0]}")
                 break
             except Exception as e:
-                print(f"[DEBUG] 字体加载失败: {font_set.get('title', ['unknown'])[0]} - {e}")
+                print(f"[DEBUG] ❌ 字体加载失败 (选项{i+1}): {font_set['title'][0]} - {str(e)[:50]}")
                 continue
 
         # 如果所有字体都失败，使用默认字体
         if title_font is None:
-            print("[DEBUG] 所有自定义字体加载失败，使用默认字体")
+            print("[DEBUG] ⚠️ 所有自定义字体加载失败，使用默认字体（中文可能不显示）")
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
             text_font = ImageFont.load_default()

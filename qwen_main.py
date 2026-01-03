@@ -1046,7 +1046,7 @@ def main():
         # 显示已生成的长图
         if st.session_state.generated_image is not None:
             st.markdown("---")
-            st.markdown("### 分析长图")
+            # st.markdown("### 分析长图")  # 已移除标题
             st.image(st.session_state.generated_image['image'], width=800)
 
             # 提供下载

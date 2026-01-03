@@ -19,6 +19,19 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
+# 尝试导入 Firebase（如果可用则使用，否则使用本地文件）
+try:
+    from firebase_config import get_usage_count as fb_get_usage
+    from firebase_config import increment_usage as fb_increment_usage
+    from firebase_config import user_exists as fb_user_exists
+    from firebase_config import save_usage_count as fb_save_usage
+    USE_FIREBASE = True
+    print("[DEBUG] Firebase 已启用，将使用云数据库")
+except ImportError as e:
+    print(f"[DEBUG] Firebase 导入失败: {e}")
+    print("[DEBUG] 将使用本地文件存储（Streamlit Cloud 重启后会丢失数据）")
+    USE_FIREBASE = False
+
 # ============================================================================
 # 1. 页面配置 & 核心样式
 # ============================================================================
@@ -243,28 +256,49 @@ def log_data(score, age, roast, duration):
     except Exception as e:
         print(f"[DEBUG] CSV 记录失败: {e}")
 
+def get_user_email():
+    """获取当前用户的标识符"""
+    # 使用 session_state 存储的用户邮箱，如果没有则生成一个
+    if 'user_email' not in st.session_state or not st.session_state.user_email:
+        # 生成临时用户 ID
+        import uuid
+        st.session_state.user_email = f"user_{uuid.uuid4().hex[:8]}@temp"
+    return st.session_state.user_email
+
 def get_usage_count():
-    """获取当前使用次数"""
-    try:
-        with open(USAGE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return data.get('global_count', 0)
-    except:
-        return 0
+    """获取当前使用次数（优先使用 Firebase）"""
+    if USE_FIREBASE:
+        email = get_user_email()
+        count = fb_get_usage(email)
+        return count
+    else:
+        # 回退到本地文件
+        try:
+            with open(USAGE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('global_count', 0)
+        except:
+            return 0
 
 def increment_usage_count():
-    """增加使用次数"""
-    try:
-        with open(USAGE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        data['global_count'] = data.get('global_count', 0) + 1
-        with open(USAGE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f)
-        print(f"[DEBUG] 使用次数已更新: {data['global_count']}")
-        return data['global_count']
-    except Exception as e:
-        print(f"[DEBUG] 更新使用次数失败: {e}")
-        return 0
+    """增加使用次数（优先使用 Firebase）"""
+    if USE_FIREBASE:
+        email = get_user_email()
+        new_count = fb_increment_usage(email)
+        return new_count
+    else:
+        # 回退到本地文件
+        try:
+            with open(USAGE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            data['global_count'] = data.get('global_count', 0) + 1
+            with open(USAGE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f)
+            print(f"[DEBUG] 使用次数已更新: {data['global_count']}")
+            return data['global_count']
+        except Exception as e:
+            print(f"[DEBUG] 更新使用次数失败: {e}")
+            return 0
 
 def register_user(email):
     """用户注册，返回是否成功和额外额度"""
@@ -275,43 +309,63 @@ def register_user(email):
         if not re.match(email_pattern, email):
             return False, "邮箱格式不正确"
 
-        with open(USER_FILE, 'r', encoding='utf-8') as f:
-            users = json.load(f)
+        if USE_FIREBASE:
+            # 使用 Firebase
+            if fb_user_exists(email):
+                return False, "该邮箱已注册"
 
-        # 检查邮箱是否已注册
-        if email in users:
-            return False, "该邮箱已注册"
+            # 新用户从 0 次开始，给予 30 次免费额度（10次初始 + 20次注册奖励）
+            initial_count = 0
+            fb_save_usage(email, initial_count)
 
-        # 注册新用户，给予额外20次额度
-        users[email] = {
-            'registered_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'bonus_count': 20
-        }
+            # 保存用户的邮箱到 session_state
+            st.session_state.user_email = email
 
-        with open(USER_FILE, 'w', encoding='utf-8') as f:
-            json.dump(users, f, indent=2, ensure_ascii=False)
+            print(f"[DEBUG] 用户注册成功: {email}, 获得30次免费额度")
+            return True, 30
+        else:
+            # 使用本地文件
+            with open(USER_FILE, 'r', encoding='utf-8') as f:
+                users = json.load(f)
 
-        # 更新使用次数，减去20次
-        with open(USAGE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        data['global_count'] = max(0, data.get('global_count', 0) - 20)
-        with open(USAGE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f)
+            # 检查邮箱是否已注册
+            if email in users:
+                return False, "该邮箱已注册"
 
-        print(f"[DEBUG] 用户注册成功: {email}, 额外20次额度")
-        return True, 20
+            # 注册新用户，给予额外20次额度
+            users[email] = {
+                'registered_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'bonus_count': 20
+            }
+
+            with open(USER_FILE, 'w', encoding='utf-8') as f:
+                json.dump(users, f, indent=2, ensure_ascii=False)
+
+            # 更新使用次数，减去20次
+            with open(USAGE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            data['global_count'] = max(0, data.get('global_count', 0) - 20)
+            with open(USAGE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f)
+
+            print(f"[DEBUG] 用户注册成功: {email}, 额外20次额度")
+            return True, 20
     except Exception as e:
         print(f"[DEBUG] 用户注册失败: {e}")
         return False, f"注册失败: {str(e)}"
 
 def check_registered_user(email):
     """检查邮箱是否已注册"""
-    try:
-        with open(USER_FILE, 'r', encoding='utf-8') as f:
-            users = json.load(f)
-        return email in users
-    except:
-        return False
+    if USE_FIREBASE:
+        return fb_user_exists(email)
+    else:
+        # 使用本地文件
+        try:
+            with open(USER_FILE, 'r', encoding='utf-8') as f:
+                users = json.load(f)
+            return email in users
+        except:
+            return False
 
 def detect_language_from_ip():
     """

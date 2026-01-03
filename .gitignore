@@ -1,5 +1,6 @@
 # 环境变量文件
 .env
+firebase-key.json
 
 # Python
 __pycache__/

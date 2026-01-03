@@ -2,3 +2,4 @@ streamlit
 dashscope
 pillow
 python-dotenv
+firebase-admin

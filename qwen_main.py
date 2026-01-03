@@ -435,8 +435,17 @@ def generate_long_image(original_image, result_data, lang_code):
         # 尝试加载字体（支持多种环境和中文显示）
         title_font = subtitle_font = text_font = small_font = tiny_font = None
 
-        # macOS 系统
+        # 字体加载顺序（按优先级）
         font_attempts = [
+            # 1. 打包的字体文件（最可靠）
+            {
+                'title': ("fonts/NotoSansSC-Regular.ttf", 72),
+                'subtitle': ("fonts/NotoSansSC-Regular.ttf", 48),
+                'text': ("fonts/NotoSansSC-Regular.ttf", 52),
+                'small': ("fonts/NotoSansSC-Regular.ttf", 44),
+                'tiny': ("fonts/NotoSansSC-Regular.ttf", 38)
+            },
+            # 2. macOS 系统字体
             {
                 'title': ("/System/Library/Fonts/PingFang.ttc", 72),
                 'subtitle': ("/System/Library/Fonts/PingFang.ttc", 48),
@@ -444,7 +453,7 @@ def generate_long_image(original_image, result_data, lang_code):
                 'small': ("/System/Library/Fonts/PingFang.ttc", 44),
                 'tiny': ("/System/Library/Fonts/PingFang.ttc", 38)
             },
-            # Linux 中文字体（按优先级）
+            # 3. Linux 中文字体（按优先级）
             {
                 'title': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 72),
                 'subtitle': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 48),
@@ -480,7 +489,7 @@ def generate_long_image(original_image, result_data, lang_code):
                 'small': ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 44),
                 'tiny': ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", 38)
             },
-            # Linux 英文字体（最后备选）
+            # 4. Linux 英文字体（最后备选）
             {
                 'title': ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 72),
                 'subtitle': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 48),
@@ -686,16 +695,20 @@ def analyze_image_qwen(image, api_key, lang):
         if 'analysis_cache' not in st.session_state:
             st.session_state.analysis_cache = {}
 
-        # 先检查是否有跨语言的评分缓存（确保中英文评分一致）
+        # 定义缓存键
+        cache_key = f"{img_hash}_{lang}"
         score_cache_key = f"{img_hash}_scores"
+
+        # 先检查是否有当前语言的完整分析缓存
+        if cache_key in st.session_state.analysis_cache:
+            print(f"[DEBUG] 使用缓存的分析结果: {cache_key}")
+            return st.session_state.analysis_cache[cache_key]
+
+        # 检查是否有跨语言的评分缓存（确保中英文评分一致）
+        cached_scores = None
         if score_cache_key in st.session_state.analysis_cache:
             print(f"[DEBUG] 使用已有的评分: {score_cache_key}")
             cached_scores = st.session_state.analysis_cache[score_cache_key]
-            # 检查是否已经有当前语言的完整分析
-            cache_key = f"{img_hash}_{lang}"
-            if cache_key in st.session_state.analysis_cache:
-                print(f"[DEBUG] 使用缓存的分析结果: {cache_key}")
-                return st.session_state.analysis_cache[cache_key]
 
         print(f"\n[DEBUG] 开始分析图片...")
         print(f"[DEBUG] 语言: {lang}")

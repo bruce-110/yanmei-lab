@@ -432,29 +432,71 @@ def generate_long_image(original_image, result_data, lang_code):
         long_img = Image.new('RGB', (img_width, int(total_height)), color=BG_COLOR)
         draw = ImageDraw.Draw(long_img)
 
-        # 尝试加载字体（支持多种环境）
-        try:
-            # 优先使用系统字体
-            title_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 56)
-            subtitle_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 36)
-            text_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 42)  # 增大
-            small_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 36)  # 增大
-            tiny_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 30)  # 增大
-        except:
+        # 尝试加载字体（支持多种环境和中文显示）
+        title_font = subtitle_font = text_font = small_font = tiny_font = None
+
+        # macOS 系统
+        font_attempts = [
+            {
+                'title': ("/System/Library/Fonts/PingFang.ttc", 72),
+                'subtitle': ("/System/Library/Fonts/PingFang.ttc", 48),
+                'text': ("/System/Library/Fonts/PingFang.ttc", 52),
+                'small': ("/System/Library/Fonts/PingFang.ttc", 44),
+                'tiny': ("/System/Library/Fonts/PingFang.ttc", 38)
+            },
+            # Linux 中文字体（按优先级）
+            {
+                'title': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 72),
+                'subtitle': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 48),
+                'text': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 52),
+                'small': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 44),
+                'tiny': ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 38)
+            },
+            {
+                'title': ("/usr/share/fonts/truetype/arphic/uming.ttc", 72),
+                'subtitle': ("/usr/share/fonts/truetype/arphic/uming.ttc", 48),
+                'text': ("/usr/share/fonts/truetype/arphic/uming.ttc", 52),
+                'small': ("/usr/share/fonts/truetype/arphic/uming.ttc", 44),
+                'tiny': ("/usr/share/fonts/truetype/arphic/uming.ttc", 38)
+            },
+            {
+                'title': ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 72),
+                'subtitle': ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 48),
+                'text': ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 52),
+                'small': ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 44),
+                'tiny': ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 38)
+            },
+            # Linux 英文字体（最后备选）
+            {
+                'title': ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 72),
+                'subtitle': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 48),
+                'text': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 52),
+                'small': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 44),
+                'tiny': ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 38)
+            }
+        ]
+
+        for font_set in font_attempts:
             try:
-                # Linux 环境（Streamlit Cloud）
-                title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 56)
-                subtitle_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
-                text_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 42)
-                small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
-                tiny_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
-            except:
-                # 使用默认字体（最后备选）
-                title_font = ImageFont.load_default()
-                subtitle_font = ImageFont.load_default()
-                text_font = ImageFont.load_default()
-                small_font = ImageFont.load_default()
-                tiny_font = ImageFont.load_default()
+                title_font = ImageFont.truetype(font_set['title'][0], font_set['title'][1])
+                subtitle_font = ImageFont.truetype(font_set['subtitle'][0], font_set['subtitle'][1])
+                text_font = ImageFont.truetype(font_set['text'][0], font_set['text'][1])
+                small_font = ImageFont.truetype(font_set['small'][0], font_set['small'][1])
+                tiny_font = ImageFont.truetype(font_set['tiny'][0], font_set['tiny'][1])
+                print(f"[DEBUG] 成功加载字体: {font_set['title'][0]}")
+                break
+            except Exception as e:
+                print(f"[DEBUG] 字体加载失败: {font_set.get('title', ['unknown'])[0]} - {e}")
+                continue
+
+        # 如果所有字体都失败，使用默认字体
+        if title_font is None:
+            print("[DEBUG] 所有自定义字体加载失败，使用默认字体")
+            title_font = ImageFont.load_default()
+            subtitle_font = ImageFont.load_default()
+            text_font = ImageFont.load_default()
+            small_font = ImageFont.load_default()
+            tiny_font = ImageFont.load_default()
 
         current_y = padding
 

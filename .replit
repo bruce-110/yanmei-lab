@@ -1,0 +1,10 @@
+# Replit configuration for YANMEI LAB
+
+entrypoint = "qwen_main.py"
+
+[deployment]
+run = ["python3", "-m", "pip", "install", "-q", "-r", "requirements.txt", "--upgrade", "&&", "streamlit", "run", "qwen_main.py", "--server.headless", "true", "--server.port", "8501"]
+deploymentTarget = "autoscale"
+
+[autoscale]
+enabled = true

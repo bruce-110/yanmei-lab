@@ -313,6 +313,24 @@ def check_registered_user(email):
     except:
         return False
 
+def detect_language_from_ip():
+    """
+    根据IP地址或时区检测用户语言
+    返回 'zh' (中文) 或 'en' (英文)
+    """
+    try:
+        # 尝试从 Streamlit context 获取时区信息
+        import streamlit as st
+        if 'timezone' in st.context:
+            timezone = st.context['timezone']
+            # 中国时区（包括港澳台）
+            china_timezones = ['Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei', 'Asia/Macao']
+            if any(tz in timezone for tz in china_timezones):
+                return 'zh'
+        return 'en'  # 默认英文
+    except:
+        return 'en'  # 出错时默认英文
+
 # ============================================================================
 # 4. 长图生成功能（极简现代风格）
 # ============================================================================
@@ -423,8 +441,11 @@ def generate_long_image(original_image, result_data, lang_code):
 
         current_y += 200 + padding  # 增加间距
 
-        # ========== 毒舌点评（极简风格）==========
-        draw.text((padding, current_y), "审美点评", fill=WINE_RED, font=text_font)
+        # ========== 审美点评 / AESTHETIC ANALYSIS（极简风格）==========
+        section_title = "审美点评" if lang_code == "zh" else "AESTHETIC ANALYSIS"
+        title_x = img_width // 2 if lang_code != "zh" else padding
+        title_anchor = 'mm' if lang_code != "zh" else 'la'
+        draw.text((title_x, current_y), section_title, fill=WINE_RED, font=text_font, anchor=title_anchor)
         current_y += 70  # 增加留白
 
         # 改进的文字换行处理
@@ -446,16 +467,22 @@ def generate_long_image(original_image, result_data, lang_code):
         max_y = total_height - footer_height - 100
         for i, line in enumerate(lines[:roast_lines]):
             if current_y + 38 < max_y:  # 确保不超出
-                draw.text((padding, current_y), line, fill=DARK_GRAY, font=small_font)
+                # 英文居中对齐，中文左对齐
+                text_x = img_width // 2 if lang_code != "zh" else padding
+                text_anchor = 'mm' if lang_code != "zh" else 'la'
+                draw.text((text_x, current_y), line, fill=DARK_GRAY, font=small_font, anchor=text_anchor)
                 current_y += 38  # 行间距
             else:
                 break
 
         current_y += padding
 
-        # ========== 改进建议（极简风格）==========
+        # ========== 改进建议 / IMPROVEMENT SUGGESTIONS（极简风格）==========
         if current_y + 100 < max_y:
-            draw.text((padding, current_y), "改进建议", fill=WINE_RED, font=text_font)
+            advice_title = "改进建议" if lang_code == "zh" else "IMPROVEMENT SUGGESTIONS"
+            advice_title_x = img_width // 2 if lang_code != "zh" else padding
+            advice_title_anchor = 'mm' if lang_code != "zh" else 'la'
+            draw.text((advice_title_x, current_y), advice_title, fill=WINE_RED, font=text_font, anchor=advice_title_anchor)
             current_y += 70
 
             for item in result_data.get("general_pairs", []) + result_data.get("outfit_pairs", []):
@@ -475,8 +502,14 @@ def generate_long_image(original_image, result_data, lang_code):
                         issue_lines.append(line)
 
                     # 绘制问题（最多2行）
+                    bullet_x = img_width // 2 if lang_code != "zh" else padding + 10
+                    bullet_anchor = 'mm' if lang_code != "zh" else 'la'
                     for issue_line in issue_lines[:2]:
-                        draw.text((padding + 10, current_y), "· " + issue_line, fill='#666666', font=tiny_font)
+                        # 中文用左对齐+缩进，英文居中
+                        if lang_code == "zh":
+                            draw.text((padding + 10, current_y), "· " + issue_line, fill='#666666', font=tiny_font, anchor='la')
+                        else:
+                            draw.text((img_width // 2, current_y), "• " + issue_line, fill='#666666', font=tiny_font, anchor='mm')
                         current_y += 30
 
                     # 分行显示解决方案
@@ -492,7 +525,10 @@ def generate_long_image(original_image, result_data, lang_code):
 
                     # 绘制建议（最多2行）
                     for fix_line in fix_lines[:2]:
-                        draw.text((padding + 25, current_y), "→ " + fix_line, fill=WINE_RED, font=tiny_font)
+                        if lang_code == "zh":
+                            draw.text((padding + 25, current_y), "→ " + fix_line, fill=WINE_RED, font=tiny_font, anchor='la')
+                        else:
+                            draw.text((img_width // 2, current_y), "→ " + fix_line, fill=WINE_RED, font=tiny_font, anchor='mm')
                         current_y += 30
 
                     current_y += 35  # 每项之间的间距（增加）
@@ -525,6 +561,25 @@ def analyze_image_qwen(image, api_key, lang):
     使用通义千问分析图片
     """
     try:
+        # 生成图片哈希，用于缓存相同图片的分析结果
+        import hashlib
+        import io
+
+        # 将图片转换为bytes以生成哈希
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='PNG')
+        img_bytes = img_byte_arr.getvalue()
+        img_hash = hashlib.md5(img_bytes).hexdigest()
+
+        # 检查是否有缓存的分析结果（同一图片+同一语言）
+        cache_key = f"{img_hash}_{lang}"
+        if 'analysis_cache' not in st.session_state:
+            st.session_state.analysis_cache = {}
+
+        if cache_key in st.session_state.analysis_cache:
+            print(f"[DEBUG] 使用缓存的分析结果: {cache_key}")
+            return st.session_state.analysis_cache[cache_key]
+
         print(f"\n[DEBUG] 开始分析图片...")
         print(f"[DEBUG] 语言: {lang}")
 
@@ -660,6 +715,11 @@ Please respond in English."""
                 # 方法1：直接解析
                 result_data = json.loads(result_text)
                 print(f"[DEBUG] JSON 解析成功！评分: {result_data.get('score')}")
+
+                # 缓存分析结果
+                st.session_state.analysis_cache[cache_key] = (result_data, duration, None)
+                print(f"[DEBUG] 分析结果已缓存: {cache_key}")
+
                 return result_data, duration, None
             except json.JSONDecodeError as je:
                 print(f"[DEBUG] 直接解析失败: {je}")
@@ -676,6 +736,11 @@ Please respond in English."""
                         # ast.literal_eval 可以处理多行字符串
                         result_data = ast.literal_eval(json_str)
                         print(f"[DEBUG] ast.literal_eval 解析成功！评分: {result_data.get('score')}")
+
+                        # 缓存分析结果
+                        st.session_state.analysis_cache[cache_key] = (result_data, duration, None)
+                        print(f"[DEBUG] 分析结果已缓存: {cache_key}")
+
                         return result_data, duration, None
                 except Exception as e2:
                     print(f"[DEBUG] ast.literal_eval 失败: {e2}")
@@ -724,6 +789,11 @@ Please respond in English."""
                         cleaned_json = ''.join(cleaned_lines)
                         result_data = json.loads(cleaned_json)
                         print(f"[DEBUG] 清理后JSON解析成功！评分: {result_data.get('score')}")
+
+                        # 缓存分析结果
+                        st.session_state.analysis_cache[cache_key] = (result_data, duration, None)
+                        print(f"[DEBUG] 分析结果已缓存: {cache_key}")
+
                         return result_data, duration, None
                 except Exception as e3:
                     print(f"[DEBUG] 手动修复JSON失败: {e3}")
@@ -767,12 +837,17 @@ def main():
         st.session_state.generate_image_clicked = False
     if 'generated_image' not in st.session_state:
         st.session_state.generated_image = None
+    if 'detected_lang' not in st.session_state:
+        # 首次访问时自动检测语言
+        st.session_state.detected_lang = detect_language_from_ip()
 
     # 顶部布局
     c1, c2 = st.columns([4, 1])
 
     with c2:
-        lang = st.selectbox("Language", ["中文", "English"], label_visibility="collapsed")
+        # 根据检测结果设置默认语言
+        default_lang_index = 0 if st.session_state.detected_lang == 'zh' else 1
+        lang = st.selectbox("Language", ["中文", "English"], index=default_lang_index, label_visibility="collapsed")
 
     lang_code = "zh" if lang == "中文" else "en"
     T = UI_TEXT[lang_code]
@@ -850,21 +925,21 @@ def main():
             elif not can_analyze:
                 # 显示注册界面
                 st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #8B4B5C 0%, #A05263 100%); padding: 40px; border-radius: 20px; text-align: center; color: white; margin: 20px 0;'>
+                <div style='background: linear-gradient(135deg, #8B4B5C 0%, #6B3B4C 100%); padding: 40px; border-radius: 20px; text-align: center; color: white; margin: 20px 0; border: 3px solid #F5F2F0;'>
                     <h2 style='color: white; margin-bottom: 15px; font-size: 2em;'>{T['limit_title']}</h2>
                     <p style='font-size: 1.2em; margin-bottom: 20px; opacity: 0.95;'>注册邮箱，免费获取额外 20 次分析额度</p>
                 </div>
                 """, unsafe_allow_html=True)
 
                 # 邮箱注册表单
-                with st.form("registration_form"):
+                with st.form("registration_form", clear_on_submit=True):
                     email = st.text_input("邮箱地址", placeholder="your@email.com", max_chars=100)
                     submit = st.form_submit_button("注册获取额度", type="primary")
 
                     if submit and email:
                         success, message = register_user(email)
                         if success:
-                            st.success(f"注册成功！已获得 {message} 次额外额度，请刷新页面继续使用")
+                            st.success(f"注册成功！已获得 {message} 次额外额度，页面将自动刷新")
                             # 刷新session state
                             st.session_state.analysis_count = get_usage_count()
                             time.sleep(2)
@@ -930,10 +1005,11 @@ def main():
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 一键生成长图按钮
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button(T['generate_btn'], type="primary", key="generate_long_image"):
-            st.session_state.generate_image_clicked = True
+        # 一键生成长图按钮（仅在未生成时显示）
+        if st.session_state.generated_image is None:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button(T['generate_btn'], type="primary", key="generate_long_image"):
+                st.session_state.generate_image_clicked = True
 
         # 处理长图生成
         if st.session_state.generate_image_clicked and st.session_state.generated_image is None:

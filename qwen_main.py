@@ -163,7 +163,7 @@ st.markdown(f"""
 UI_TEXT = {
     "zh": {
         "brand": "颜美实验室",
-        "title": "YANMEI LAB",
+        "title": "颜美实验室",
         "subtitle": "发现你的独特美感",
         "btn": "开始分析",
         "score": "综合评分",
@@ -493,25 +493,34 @@ def analyze_image_qwen(image, api_key, lang):
 
         # 构建提示词 - 毒舌版本
         if lang == "zh":
-            prompt = """你是一个顶级毒舌时尚审美顾问，说话犀利但真实。请毫不留情地分析这张照片中的人物形象。
+            prompt = """你是一个顶级时尚审美顾问。请客观、准确地分析这张照片中的人物形象。
 
-重点吐槽以下方面：
-1. **穿搭灾难** - 颜色搭配、款式选择、面料质感、风格混搭
-2. **发型妆容** - 发型是否适合脸型、妆容是否夸张、色调是否协调
-3. **体态表情** - 姿势是否僵硬、表情是否自然、是否有油腻感
-4. **整体氛围** - 给人的第一印象、气质类型、是否符合场合
+评分标准（总分100分）：
+- 85-100分：颜值和穿搭都非常出色，帅哥美女级别，几乎无瑕疵
+- 70-84分：颜值在线或穿搭得体，有个别小问题但不影响整体
+- 50-69分：中规中矩，有明显提升空间
+- 30-49分：穿搭或形象有较大问题
+- 10-29分：严重灾难级别
 
-毒舌点评要求：
-- 用词要犀利、幽默、一针见血
-- 可以夸张但要基于事实
+分析重点：
+1. **颜值评估** - 五官、身材比例、气质是否出众（帅哥美女应给高分）
+2. **穿搭品味** - 颜色搭配、款式选择、面料质感、风格混搭
+3. **发型妆容** - 发型是否适合脸型、妆容是否精致、色调是否协调
+4. **体态表情** - 姿势是否优雅、表情是否自然、自信程度
+5. **整体氛围** - 给人的第一印象、气质类型、是否符合场合
+
+点评要求：
+- 客观真实，有好就说好，有差就说差
+- 帅哥美女要大方承认，给高分（85-100）
+- 用词犀利但不刻薄，幽默风趣
 - 用网络流行语和时尚术语
-- 长度至少 100 字，分段吐槽
+- 长度至少 100 字
 
 重要：必须以纯 JSON 格式回复（不要使用 markdown 代码块，JSON 前后不要有任何其他文字）：
 {
     "score": <1-100的整数评分>,
     "visual_age": "<视觉年龄>",
-    "roast": "<至少100字的犀利毒舌点评，分段吐槽穿搭、发型、体态、气质等。换行符请用 \\n 表示>",
+    "roast": "<至少100字的犀利点评，分段分析颜值、穿搭、发型、体态、气质等。换行符请用 \\n 表示>",
     "outfit_pairs": [
         {"issue": "<具体穿搭问题>", "fix": "<详细改进建议>"}
     ],
@@ -520,27 +529,36 @@ def analyze_image_qwen(image, api_key, lang):
     ]
 }
 
-请用简体中文回复，吐槽要够狠！"""
+请用简体中文回复。"""
         else:
-            prompt = """You are a top-tier savage fashion consultant. Be brutally honest and savage in analyzing this person's photo.
+            prompt = """You are a top-tier fashion consultant. Please analyze this person's photo objectively and accurately.
 
-Roast these aspects:
-1. **Fashion Disaster** - Color clashes, wrong choices, cheap fabrics, style mismatches
-2. **Hair & Makeup** - Wrong face shape, excessive makeup, bad color coordination
-3. **Posture & Expression** - Stiff poses, fake expressions, cringe vibes
-4. **Overall Vibe** - First impressions, vibe type, appropriateness
+Scoring Standards (Total 100 points):
+- 85-100: Excellent looks and outfit, stunning/attractive level, almost flawless
+- 70-84: Good looks or decent outfit, minor issues but overall great
+- 50-69: Average,有明显提升空间
+- 30-49: Major issues with outfit or appearance
+- 10-29: Disaster level
 
-Roast requirements:
-- Use sharp, witty, cutting language
-- Can be exaggerated but based on reality
+Analyze these aspects:
+1. **Physical Appeal** - Facial features, body proportions, charisma (stunning people get high scores)
+2. **Fashion Taste** - Color coordination, style choices, fabric quality, mix-and-match
+3. **Hair & Makeup** - Suitability for face shape, makeup quality, color harmony
+4. **Posture & Expression** - Elegance, naturalness, confidence level
+5. **Overall Vibe** - First impressions, aura, appropriateness
+
+Comment requirements:
+- Be objective and authentic, acknowledge strengths and weaknesses
+- Give high scores (85-100) for genuinely attractive people
+- Use sharp but not mean language, witty and entertaining
 - Use internet slang and fashion terminology
-- At least 100 words, multi-paragraph roasting
+- At least 100 words
 
 IMPORTANT: Respond in valid JSON format only (no markdown code blocks, no text before/after JSON):
 {
     "score": <integer 1-100>,
     "visual_age": "<estimated age>",
-    "roast": "<At least 100 words of savage roasting, multiple paragraphs tearing apart their outfit, hair, pose, and vibe. Use double quotes and escape newlines as \\n if needed.>",
+    "roast": "<At least 100 words of sharp commentary, analyzing looks, outfit, hair, pose, and vibe. Use double quotes and escape newlines as \\n if needed.>",
     "outfit_pairs": [
         {"issue": "<specific clothing problem>", "fix": "<detailed improvement suggestion>"}
     ],
@@ -549,7 +567,7 @@ IMPORTANT: Respond in valid JSON format only (no markdown code blocks, no text b
     ]
 }
 
-Be savage but entertaining. Make it hurt so good!"""
+Please respond in English."""
 
         print(f"[DEBUG] 提示词已构建，长度: {len(prompt)} 字符")
 
@@ -730,12 +748,12 @@ def main():
         """)
         st.stop()
 
-    # 显示剩余次数（如果已订阅则显示无限）
-    if st.session_state.is_subscribed:
-        st.info(f"{T['usage_info']}: {T['unlimited']}")
-    else:
-        remaining = 10 - st.session_state.analysis_count
-        st.info(f"{T['usage_info']}: {remaining}/10")
+    # 使用次数限制已移除（免费无限使用）
+    # if st.session_state.is_subscribed:
+    #     st.info(f"{T['usage_info']}: {T['unlimited']}")
+    # else:
+    #     remaining = 10 - st.session_state.analysis_count
+    #     st.info(f"{T['usage_info']}: {remaining}/10")
 
     # 核心视觉区域
     st.markdown(f"<div class='hero-title'>{T['title']}</div>", unsafe_allow_html=True)
@@ -767,10 +785,10 @@ def main():
         st.image(image, width=700)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 检查使用次数限制
-        can_analyze = st.session_state.is_subscribed or st.session_state.analysis_count < 10
+        # 使用次数限制已移除，所有用户可以无限使用
+        can_analyze = True  # st.session_state.is_subscribed or st.session_state.analysis_count < 10
 
-        if st.button(T['btn'], type="primary", disabled=not can_analyze and uploaded_file is not None):
+        if st.button(T['btn'], type="primary"):  # disabled=not can_analyze and uploaded_file is not None):
             if not api_key:
                 st.error(T['no_key'])
             elif not can_analyze:
@@ -800,10 +818,10 @@ def main():
                         st.error(f"**分析失败**\n\n{err}")
 
                     elif result:
-                        # 增加使用计数（持久化到文件）
-                        if not st.session_state.is_subscribed:
-                            new_count = increment_usage_count()
-                            st.session_state.analysis_count = new_count
+                        # 使用次数限制已移除（免费无限使用）
+                        # if not st.session_state.is_subscribed:
+                        #     new_count = increment_usage_count()
+                        #     st.session_state.analysis_count = new_count
 
                         # 保存结果到 session state
                         st.session_state.last_result = result
@@ -870,8 +888,12 @@ def main():
                     import uuid
                     user_id = uuid.uuid4().hex[:8]  # 取前8位
                     score_value = result.get('score', '0')
-                    filename = f"yanmei_{score_value}分_{user_id}.png"
-                    long_image.save(filename)
+                    # 使用 JPG 格式（微信兼容）
+                    filename = f"yanmei_{score_value}分_{user_id}.jpg"
+                    # 确保图像是 RGB 模式（JPG 不支持透明通道）
+                    if long_image.mode == 'RGBA':
+                        long_image = long_image.convert('RGB')
+                    long_image.save(filename, 'JPEG', quality=95)
 
                     st.session_state.generated_image = {
                         'image': long_image,

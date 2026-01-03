@@ -483,6 +483,9 @@ def analyze_image_qwen(image, api_key, lang):
 
         # 将图片转换为 base64
         buffered = BytesIO()
+        # 如果图像是 RGBA 模式，转换为 RGB（JPEG 不支持透明通道）
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
         image.save(buffered, format="JPEG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
         img_url = f"data:image/jpeg;base64,{img_base64}"

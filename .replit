@@ -1,0 +1,14 @@
+entrypoint = "qwen_main.py"
+modules = ["python-3.10:v18-20230807-321e88b"]
+hidden = [".pythonlibs"]
+
+[nix]
+channel = "stable-23_05"
+packages = ["python310", "python310Packages.pip"]
+
+[deployment]
+run = ["python3", "-m", "streamlit", "run", "qwen_main.py", "--server.headless", "true", "--server.port", "8080"]
+deploymentTarget = "autoscale"
+
+[autoscale]
+enabled = true

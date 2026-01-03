@@ -21,18 +21,12 @@ import sys
 # 加载环境变量
 load_dotenv()
 
-# 尝试导入 Firebase（如果可用则使用，否则使用本地文件）
-try:
-    from firebase_config import get_usage_count as fb_get_usage
-    from firebase_config import increment_usage as fb_increment_usage
-    from firebase_config import user_exists as fb_user_exists
-    from firebase_config import save_usage_count as fb_save_usage
-    USE_FIREBASE = True
-    print("[DEBUG] Firebase 已启用，将使用云数据库")
-except ImportError as e:
-    print(f"[DEBUG] Firebase 导入失败: {e}")
-    print("[DEBUG] 将使用本地文件存储（Streamlit Cloud 重启后会丢失数据）")
-    USE_FIREBASE = False
+# Firebase 配置（已禁用 - 应用无限次使用）
+# from firebase_config import get_usage_count as fb_get_usage
+# from firebase_config import increment_usage as fb_increment_usage
+# from firebase_config import user_exists as fb_user_exists
+# from firebase_config import save_usage_count as fb_save_usage
+USE_FIREBASE = False
 
 # ============================================================================
 # 1. 页面配置 & 核心样式
@@ -761,11 +755,6 @@ Please respond in English."""
 # ============================================================================
 def main():
     # 初始化 session state
-    if 'analysis_count' not in st.session_state:
-        # 从文件加载使用次数（持久化）
-        st.session_state.analysis_count = get_usage_count()
-    if 'is_subscribed' not in st.session_state:
-        st.session_state.is_subscribed = False
     if 'last_result' not in st.session_state:
         st.session_state.last_result = None
     if 'last_image' not in st.session_state:
@@ -811,15 +800,8 @@ def main():
         """)
         st.stop()
 
-    # 显示剩余次数
-    if st.session_state.is_subscribed:
-        st.info(f"{T['usage_info']}: {T['unlimited']}")
-    else:
-        remaining = 10 - st.session_state.analysis_count
-        if remaining > 0:
-            st.info(f"{T['usage_info']}: {remaining}/10")
-        else:
-            st.warning(f"免费额度已用完，请注册获取更多次数")
+    # 显示使用信息（无限次使用）
+    st.info(f"✨ {T['usage_info']}: {T['unlimited']}")
 
     # 核心视觉区域
     st.markdown(f"<div class='hero-title'>{T['title']}</div>", unsafe_allow_html=True)
@@ -851,36 +833,10 @@ def main():
         st.image(image, width=700)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 检查使用次数限制
-        can_analyze = st.session_state.is_subscribed or st.session_state.analysis_count < 10
-
-        if st.button(T['btn'], type="primary", disabled=not can_analyze and uploaded_file is not None):
+        # 分析按钮（无限次使用）
+        if st.button(T['btn'], type="primary"):
             if not api_key:
                 st.error(T['no_key'])
-            elif not can_analyze:
-                # 显示注册界面
-                st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #8B4B5C 0%, #6B3B4C 100%); padding: 40px; border-radius: 20px; text-align: center; color: white; margin: 20px 0; border: 3px solid #F5F2F0;'>
-                    <h2 style='color: white; margin-bottom: 15px; font-size: 2em;'>{T['limit_title']}</h2>
-                    <p style='font-size: 1.2em; margin-bottom: 20px; opacity: 0.95;'>注册邮箱，免费获取额外 20 次分析额度</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # 邮箱注册表单
-                with st.form("registration_form", clear_on_submit=True):
-                    email = st.text_input("邮箱地址", placeholder="your@email.com", max_chars=100)
-                    submit = st.form_submit_button("注册获取额度", type="primary")
-
-                    if submit and email:
-                        success, message = register_user(email)
-                        if success:
-                            st.success(f"注册成功！已获得 {message} 次额外额度，页面将自动刷新")
-                            # 刷新session state
-                            st.session_state.analysis_count = get_usage_count()
-                            time.sleep(2)
-                            st.rerun()
-                        else:
-                            st.error(message)
             else:
                 with st.spinner(T['analyzing']):
                     result, duration, err = analyze_image_qwen(image, api_key, lang_code)
@@ -889,20 +845,12 @@ def main():
                         st.error(f"**分析失败**\n\n{err}")
 
                     elif result:
-                        # 增加使用计数（持久化到文件）
-                        if not st.session_state.is_subscribed:
-                            new_count = increment_usage_count()
-                            st.session_state.analysis_count = new_count
-
                         # 保存结果到 session state
                         st.session_state.last_result = result
                         st.session_state.last_image = image
                         st.session_state.last_lang_code = lang_code
 
                         log_data(result.get("score"), result.get("visual_age"), result.get("roast"), duration)
-
-                        # 清除之前的生成图片状态
-                        st.session_state.generated_image = None
 
     # 显示分析结果（如果有的话）
     if st.session_state.last_result is not None:

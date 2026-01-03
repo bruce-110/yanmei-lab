@@ -9,6 +9,8 @@ import os
 import json
 
 # 初始化 Firebase（只初始化一次）
+db = None  # 默认设置为 None
+
 if not firebase_admin._apps:
     try:
         # 方法 1：从环境变量读取 JSON 内容（适用于 Streamlit Cloud）
@@ -21,23 +23,24 @@ if not firebase_admin._apps:
         else:
             # 方法 2：从文件加载（适用于本地开发）
             key_path = os.getenv('FIREBASE_KEY_PATH', 'firebase-key.json')
+            # 检查文件是否存在
+            if not os.path.exists(key_path):
+                raise FileNotFoundError(f"Firebase 密钥文件不存在: {key_path}")
             cred = credentials.Certificate(key_path)
             print(f"[DEBUG] Firebase 从文件初始化: {key_path}")
 
         firebase_admin.initialize_app(cred)
         print("[DEBUG] Firebase 初始化成功")
+
+        # 只有在初始化成功后才获取 Firestore 实例
+        db = firestore.client()
+        print("[DEBUG] Firestore 数据库连接成功")
+    except FileNotFoundError as e:
+        print(f"[DEBUG] Firebase 密钥文件未找到: {e}")
+        print("[DEBUG] 将使用本地文件存储（Streamlit Cloud 重启后数据会丢失）")
     except Exception as e:
         print(f"[DEBUG] Firebase 初始化失败: {e}")
-        print("[DEBUG] 将使用本地文件存储（数据不会持久化）")
-        raise
-
-# 获取 Firestore 实例
-try:
-    db = firestore.client()
-    print("[DEBUG] Firestore 数据库连接成功")
-except Exception as e:
-    print(f"[DEBUG] Firestore 连接失败: {e}")
-    db = None
+        print("[DEBUG] 将使用本地文件存储（Streamlit Cloud 重启后数据会丢失）")
 
 
 def save_usage_count(email, count):

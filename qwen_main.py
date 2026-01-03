@@ -764,6 +764,8 @@ def main():
     if 'detected_lang' not in st.session_state:
         # 首次访问时自动检测语言
         st.session_state.detected_lang = detect_language_from_ip()
+    if 'is_subscribed' not in st.session_state:
+        st.session_state.is_subscribed = False
 
     # 顶部布局
     c1, c2 = st.columns([4, 1])

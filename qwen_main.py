@@ -661,14 +661,20 @@ def analyze_image_qwen(image, api_key, lang):
         img_bytes = img_byte_arr.getvalue()
         img_hash = hashlib.md5(img_bytes).hexdigest()
 
-        # 检查是否有缓存的分析结果（同一图片+同一语言）
-        cache_key = f"{img_hash}_{lang}"
+        # 检查是否有缓存的分析结果
         if 'analysis_cache' not in st.session_state:
             st.session_state.analysis_cache = {}
 
-        if cache_key in st.session_state.analysis_cache:
-            print(f"[DEBUG] 使用缓存的分析结果: {cache_key}")
-            return st.session_state.analysis_cache[cache_key]
+        # 先检查是否有跨语言的评分缓存（确保中英文评分一致）
+        score_cache_key = f"{img_hash}_scores"
+        if score_cache_key in st.session_state.analysis_cache:
+            print(f"[DEBUG] 使用已有的评分: {score_cache_key}")
+            cached_scores = st.session_state.analysis_cache[score_cache_key]
+            # 检查是否已经有当前语言的完整分析
+            cache_key = f"{img_hash}_{lang}"
+            if cache_key in st.session_state.analysis_cache:
+                print(f"[DEBUG] 使用缓存的分析结果: {cache_key}")
+                return st.session_state.analysis_cache[cache_key]
 
         print(f"\n[DEBUG] 开始分析图片...")
         print(f"[DEBUG] 语言: {lang}")
@@ -690,8 +696,49 @@ def analyze_image_qwen(image, api_key, lang):
         print(f"[DEBUG] 图片已转换为 base64，大小: {len(img_base64)} 字符")
 
         # 构建提示词 - 毒舌版本
+        # 检查是否有评分缓存（确保中英文评分一致）
+        cached_scores = None
+        if score_cache_key in st.session_state.analysis_cache:
+            cached_scores = st.session_state.analysis_cache[score_cache_key]
+            print(f"[DEBUG] 使用已有评分: score={cached_scores['score']}, visual_age={cached_scores['visual_age']}")
+
         if lang == "zh":
-            prompt = """你是一个顶级时尚审美顾问。请客观、准确地分析这张照片中的人物形象。
+            if cached_scores:
+                prompt = f"""你是一个顶级时尚审美顾问。请客观、准确地分析这张照片中的人物形象。
+
+【重要】必须使用以下评分（这是之前已经确定的标准）：
+- 评分：{cached_scores['score']} 分
+- 视觉年龄：{cached_scores['visual_age']}
+
+分析重点：
+1. **颜值评估** - 五官、身材比例、气质是否出众（帅哥美女应给高分）
+2. **穿搭品味** - 颜色搭配、款式选择、面料质感、风格混搭
+3. **发型妆容** - 发型是否适合脸型、妆容是否精致、色调是否协调
+4. **体态表情** - 姿势是否优雅、表情是否自然、自信程度
+5. **整体氛围** - 给人的第一印象、气质类型、是否符合场合
+
+点评要求：
+- 客观真实，有好就说好，有差就说差
+- 用词犀利但不刻薄，幽默风趣
+- 用网络流行语和时尚术语
+- 长度至少 100 字
+
+重要：必须以纯 JSON 格式回复（不要使用 markdown 代码块，JSON 前后不要有任何其他文字）：
+{{
+    "score": {cached_scores['score']},
+    "visual_age": "{cached_scores['visual_age']}",
+    "roast": "<至少100字的犀利点评，分段分析颜值、穿搭、发型、体态、气质等。换行符请用 \\n 表示>",
+    "outfit_pairs": [
+        {{"issue": "<具体穿搭问题>", "fix": "<详细改进建议>"}}
+    ],
+    "general_pairs": [
+        {{"issue": "<发型/妆容/姿态问题>", "fix": "<详细改进建议>"}}
+    ]
+}}
+
+请用简体中文回复。"""
+            else:
+                prompt = """你是一个顶级时尚审美顾问。请客观、准确地分析这张照片中的人物形象。
 
 评分标准（总分100分）：
 - 85-100分：颜值和穿搭都非常出色，帅哥美女级别，几乎无瑕疵
@@ -729,7 +776,42 @@ def analyze_image_qwen(image, api_key, lang):
 
 请用简体中文回复。"""
         else:
-            prompt = """You are a top-tier fashion consultant. Please analyze this person's photo objectively and accurately.
+            if cached_scores:
+                prompt = f"""You are a top-tier fashion consultant. Please analyze this person's photo objectively and accurately.
+
+[IMPORTANT] You MUST use these scores (previously determined standard):
+- Score: {cached_scores['score']} points
+- Visual Age: {cached_scores['visual_age']}
+
+Analyze these aspects:
+1. **Physical Appeal** - Facial features, body proportions, charisma (stunning people get high scores)
+2. **Fashion Taste** - Color coordination, style choices, fabric quality, mix-and-match
+3. **Hair & Makeup** - Suitability for face shape, makeup quality, color harmony
+4. **Posture & Expression** - Elegance, naturalness, confidence level
+5. **Overall Vibe** - First impressions, aura, appropriateness
+
+Comment requirements:
+- Be objective and authentic, acknowledge strengths and weaknesses
+- Use sharp but not mean language, witty and entertaining
+- Use internet slang and fashion terminology
+- At least 100 words
+
+IMPORTANT: Respond in valid JSON format only (no markdown code blocks, no text before/after JSON):
+{{
+    "score": {cached_scores['score']},
+    "visual_age": "{cached_scores['visual_age']}",
+    "roast": "<At least 100 words of sharp commentary. Use double quotes and escape newlines as \\n if needed.>",
+    "outfit_pairs": [
+        {{"issue": "<specific clothing problem>", "fix": "<detailed improvement suggestion>"}}
+    ],
+    "general_pairs": [
+        {{"issue": "<hair/makeup/pose problem>", "fix": "<detailed improvement suggestion>"}}
+    ]
+}}
+
+Please respond in English."""
+            else:
+                prompt = """You are a top-tier fashion consultant. Please analyze this person's photo objectively and accurately.
 
 Scoring Standards (Total 100 points):
 - 85-100: Excellent looks and outfit, stunning/attractive level, almost flawless
@@ -806,6 +888,13 @@ Please respond in English."""
                 result_data = json.loads(result_text)
                 print(f"[DEBUG] JSON 解析成功！评分: {result_data.get('score')}")
 
+                # 缓存评分（跨语言共享）
+                st.session_state.analysis_cache[score_cache_key] = {
+                    'score': result_data.get('score'),
+                    'visual_age': result_data.get('visual_age')
+                }
+                print(f"[DEBUG] 评分已缓存到 {score_cache_key}")
+
                 # 缓存分析结果
                 st.session_state.analysis_cache[cache_key] = (result_data, duration, None)
                 print(f"[DEBUG] 分析结果已缓存: {cache_key}")
@@ -826,6 +915,13 @@ Please respond in English."""
                         # ast.literal_eval 可以处理多行字符串
                         result_data = ast.literal_eval(json_str)
                         print(f"[DEBUG] ast.literal_eval 解析成功！评分: {result_data.get('score')}")
+
+                        # 缓存评分（跨语言共享）
+                        st.session_state.analysis_cache[score_cache_key] = {
+                            'score': result_data.get('score'),
+                            'visual_age': result_data.get('visual_age')
+                        }
+                        print(f"[DEBUG] 评分已缓存到 {score_cache_key}")
 
                         # 缓存分析结果
                         st.session_state.analysis_cache[cache_key] = (result_data, duration, None)
@@ -879,6 +975,13 @@ Please respond in English."""
                         cleaned_json = ''.join(cleaned_lines)
                         result_data = json.loads(cleaned_json)
                         print(f"[DEBUG] 清理后JSON解析成功！评分: {result_data.get('score')}")
+
+                        # 缓存评分（跨语言共享）
+                        st.session_state.analysis_cache[score_cache_key] = {
+                            'score': result_data.get('score'),
+                            'visual_age': result_data.get('visual_age')
+                        }
+                        print(f"[DEBUG] 评分已缓存到 {score_cache_key}")
 
                         # 缓存分析结果
                         st.session_state.analysis_cache[cache_key] = (result_data, duration, None)

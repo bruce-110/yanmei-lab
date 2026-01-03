@@ -29,6 +29,7 @@ wheels/
 # 数据文件
 santorini_data.csv
 santorini_usage.json
+santorini_users.json
 *.png
 *.jpg
 

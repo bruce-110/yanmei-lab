@@ -214,6 +214,7 @@ UI_TEXT = {
 # ============================================================================
 DATA_FILE = 'santorini_data.csv'
 USAGE_FILE = 'santorini_usage.json'  # 使用次数记录文件
+USER_FILE = 'santorini_users.json'  # 用户邮箱记录文件
 
 # 初始化数据文件
 if not os.path.exists(DATA_FILE):
@@ -224,6 +225,11 @@ if not os.path.exists(DATA_FILE):
 if not os.path.exists(USAGE_FILE):
     with open(USAGE_FILE, 'w', encoding='utf-8') as f:
         json.dump({"global_count": 0}, f)
+
+# 初始化用户邮箱文件
+if not os.path.exists(USER_FILE):
+    with open(USER_FILE, 'w', encoding='utf-8') as f:
+        json.dump({}, f)
 
 def log_data(score, age, roast, duration):
     """记录数据到 CSV"""
@@ -259,6 +265,53 @@ def increment_usage_count():
     except Exception as e:
         print(f"[DEBUG] 更新使用次数失败: {e}")
         return 0
+
+def register_user(email):
+    """用户注册，返回是否成功和额外额度"""
+    try:
+        import re
+        # 简单的邮箱格式验证
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return False, "邮箱格式不正确"
+
+        with open(USER_FILE, 'r', encoding='utf-8') as f:
+            users = json.load(f)
+
+        # 检查邮箱是否已注册
+        if email in users:
+            return False, "该邮箱已注册"
+
+        # 注册新用户，给予额外20次额度
+        users[email] = {
+            'registered_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'bonus_count': 20
+        }
+
+        with open(USER_FILE, 'w', encoding='utf-8') as f:
+            json.dump(users, f, indent=2, ensure_ascii=False)
+
+        # 更新使用次数，减去20次
+        with open(USAGE_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        data['global_count'] = max(0, data.get('global_count', 0) - 20)
+        with open(USAGE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
+
+        print(f"[DEBUG] 用户注册成功: {email}, 额外20次额度")
+        return True, 20
+    except Exception as e:
+        print(f"[DEBUG] 用户注册失败: {e}")
+        return False, f"注册失败: {str(e)}"
+
+def check_registered_user(email):
+    """检查邮箱是否已注册"""
+    try:
+        with open(USER_FILE, 'r', encoding='utf-8') as f:
+            users = json.load(f)
+        return email in users
+    except:
+        return False
 
 # ============================================================================
 # 4. 长图生成功能（极简现代风格）
@@ -748,12 +801,15 @@ def main():
         """)
         st.stop()
 
-    # 使用次数限制已移除（免费无限使用）
-    # if st.session_state.is_subscribed:
-    #     st.info(f"{T['usage_info']}: {T['unlimited']}")
-    # else:
-    #     remaining = 10 - st.session_state.analysis_count
-    #     st.info(f"{T['usage_info']}: {remaining}/10")
+    # 显示剩余次数
+    if st.session_state.is_subscribed:
+        st.info(f"{T['usage_info']}: {T['unlimited']}")
+    else:
+        remaining = 10 - st.session_state.analysis_count
+        if remaining > 0:
+            st.info(f"{T['usage_info']}: {remaining}/10")
+        else:
+            st.warning(f"免费额度已用完，请注册获取更多次数")
 
     # 核心视觉区域
     st.markdown(f"<div class='hero-title'>{T['title']}</div>", unsafe_allow_html=True)
@@ -785,31 +841,36 @@ def main():
         st.image(image, width=700)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 使用次数限制已移除，所有用户可以无限使用
-        can_analyze = True  # st.session_state.is_subscribed or st.session_state.analysis_count < 10
+        # 检查使用次数限制
+        can_analyze = st.session_state.is_subscribed or st.session_state.analysis_count < 10
 
-        if st.button(T['btn'], type="primary"):  # disabled=not can_analyze and uploaded_file is not None):
+        if st.button(T['btn'], type="primary", disabled=not can_analyze and uploaded_file is not None):
             if not api_key:
                 st.error(T['no_key'])
             elif not can_analyze:
-                # 显示限制提示（暂时隐藏支付功能）
+                # 显示注册界面
                 st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; border-radius: 20px; text-align: center; color: white; margin: 20px 0;'>
+                <div style='background: linear-gradient(135deg, #8B4B5C 0%, #A05263 100%); padding: 40px; border-radius: 20px; text-align: center; color: white; margin: 20px 0;'>
                     <h2 style='color: white; margin-bottom: 15px; font-size: 2em;'>{T['limit_title']}</h2>
-                    <p style='font-size: 1.2em; margin-bottom: 30px; opacity: 0.95;'>{T['limit_msg']}</p>
-                    <p style='font-size: 0.9em; opacity: 0.8;'>💬 功能开发中，敬请期待...</p>
+                    <p style='font-size: 1.2em; margin-bottom: 20px; opacity: 0.95;'>注册邮箱，免费获取额外 20 次分析额度</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # 注释掉的支付功能
-                """
-                # 虎皮椒支付链接示例（需要替换为你的实际链接）
-                # 注册地址: https://www.xunhupay.com/
-                payment_url_zh = "https://pay.xunhupay.com/your_payment_link"
-                payment_url_en = "https://your-payment-link.com"
-                payment_url = payment_url_zh if lang_code == "zh" else payment_url_en
-                price_display = "¥9.9/月" if lang_code == "zh" else "$9.9/month"
-                """
+                # 邮箱注册表单
+                with st.form("registration_form"):
+                    email = st.text_input("邮箱地址", placeholder="your@email.com", max_chars=100)
+                    submit = st.form_submit_button("注册获取额度", type="primary")
+
+                    if submit and email:
+                        success, message = register_user(email)
+                        if success:
+                            st.success(f"注册成功！已获得 {message} 次额外额度，请刷新页面继续使用")
+                            # 刷新session state
+                            st.session_state.analysis_count = get_usage_count()
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error(message)
             else:
                 with st.spinner(T['analyzing']):
                     result, duration, err = analyze_image_qwen(image, api_key, lang_code)
@@ -818,10 +879,10 @@ def main():
                         st.error(f"**分析失败**\n\n{err}")
 
                     elif result:
-                        # 使用次数限制已移除（免费无限使用）
-                        # if not st.session_state.is_subscribed:
-                        #     new_count = increment_usage_count()
-                        #     st.session_state.analysis_count = new_count
+                        # 增加使用计数（持久化到文件）
+                        if not st.session_state.is_subscribed:
+                            new_count = increment_usage_count()
+                            st.session_state.analysis_count = new_count
 
                         # 保存结果到 session state
                         st.session_state.last_result = result

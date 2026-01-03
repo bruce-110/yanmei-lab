@@ -378,19 +378,29 @@ def generate_long_image(original_image, result_data, lang_code):
         long_img = Image.new('RGB', (img_width, int(total_height)), color=BG_COLOR)
         draw = ImageDraw.Draw(long_img)
 
-        # 尝试加载字体
+        # 尝试加载字体（支持多种环境）
         try:
-            title_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 56)  # 更大
+            # 优先使用系统字体
+            title_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 56)
             subtitle_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 36)
-            text_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 32)  # 更大
-            small_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 26)  # 更大
-            tiny_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 22)
+            text_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 42)  # 增大
+            small_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 36)  # 增大
+            tiny_font = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 30)  # 增大
         except:
-            title_font = ImageFont.load_default()
-            subtitle_font = ImageFont.load_default()
-            text_font = ImageFont.load_default()
-            small_font = ImageFont.load_default()
-            tiny_font = ImageFont.load_default()
+            try:
+                # Linux 环境（Streamlit Cloud）
+                title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 56)
+                subtitle_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+                text_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 42)
+                small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+                tiny_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+            except:
+                # 使用默认字体（最后备选）
+                title_font = ImageFont.load_default()
+                subtitle_font = ImageFont.load_default()
+                text_font = ImageFont.load_default()
+                small_font = ImageFont.load_default()
+                tiny_font = ImageFont.load_default()
 
         current_y = padding
 
@@ -443,9 +453,7 @@ def generate_long_image(original_image, result_data, lang_code):
 
         # ========== 审美点评 / AESTHETIC ANALYSIS（极简风格）==========
         section_title = "审美点评" if lang_code == "zh" else "AESTHETIC ANALYSIS"
-        title_x = img_width // 2 if lang_code != "zh" else padding
-        title_anchor = 'mm' if lang_code != "zh" else 'la'
-        draw.text((title_x, current_y), section_title, fill=WINE_RED, font=text_font, anchor=title_anchor)
+        draw.text((padding, current_y), section_title, fill=WINE_RED, font=text_font, anchor='la')
         current_y += 70  # 增加留白
 
         # 改进的文字换行处理
@@ -463,15 +471,12 @@ def generate_long_image(original_image, result_data, lang_code):
         if line:
             lines.append(line)
 
-        # 绘制文字（确保不超出）
+        # 绘制文字（统一左对齐）
         max_y = total_height - footer_height - 100
         for i, line in enumerate(lines[:roast_lines]):
-            if current_y + 38 < max_y:  # 确保不超出
-                # 英文居中对齐，中文左对齐
-                text_x = img_width // 2 if lang_code != "zh" else padding
-                text_anchor = 'mm' if lang_code != "zh" else 'la'
-                draw.text((text_x, current_y), line, fill=DARK_GRAY, font=small_font, anchor=text_anchor)
-                current_y += 38  # 行间距
+            if current_y + 45 < max_y:  # 确保不超出
+                draw.text((padding, current_y), line, fill=DARK_GRAY, font=small_font, anchor='la')
+                current_y += 45  # 行间距（增加）
             else:
                 break
 
@@ -480,13 +485,11 @@ def generate_long_image(original_image, result_data, lang_code):
         # ========== 改进建议 / IMPROVEMENT SUGGESTIONS（极简风格）==========
         if current_y + 100 < max_y:
             advice_title = "改进建议" if lang_code == "zh" else "IMPROVEMENT SUGGESTIONS"
-            advice_title_x = img_width // 2 if lang_code != "zh" else padding
-            advice_title_anchor = 'mm' if lang_code != "zh" else 'la'
-            draw.text((advice_title_x, current_y), advice_title, fill=WINE_RED, font=text_font, anchor=advice_title_anchor)
+            draw.text((padding, current_y), advice_title, fill=WINE_RED, font=text_font, anchor='la')
             current_y += 70
 
             for item in result_data.get("general_pairs", []) + result_data.get("outfit_pairs", []):
-                if current_y + 120 < max_y:  # 确保不超出
+                if current_y + 140 < max_y:  # 确保不超出
                     issue = item.get('issue', '')
                     fix = item.get('fix', '')
 
@@ -501,16 +504,10 @@ def generate_long_image(original_image, result_data, lang_code):
                     if line:
                         issue_lines.append(line)
 
-                    # 绘制问题（最多2行）
-                    bullet_x = img_width // 2 if lang_code != "zh" else padding + 10
-                    bullet_anchor = 'mm' if lang_code != "zh" else 'la'
+                    # 绘制问题（最多2行，统一左对齐）
                     for issue_line in issue_lines[:2]:
-                        # 中文用左对齐+缩进，英文居中
-                        if lang_code == "zh":
-                            draw.text((padding + 10, current_y), "· " + issue_line, fill='#666666', font=tiny_font, anchor='la')
-                        else:
-                            draw.text((img_width // 2, current_y), "• " + issue_line, fill='#666666', font=tiny_font, anchor='mm')
-                        current_y += 30
+                        draw.text((padding + 10, current_y), "· " + issue_line, fill='#666666', font=tiny_font, anchor='la')
+                        current_y += 35
 
                     # 分行显示解决方案
                     fix_lines = []
@@ -523,15 +520,12 @@ def generate_long_image(original_image, result_data, lang_code):
                     if line:
                         fix_lines.append(line)
 
-                    # 绘制建议（最多2行）
+                    # 绘制建议（最多2行，统一左对齐）
                     for fix_line in fix_lines[:2]:
-                        if lang_code == "zh":
-                            draw.text((padding + 25, current_y), "→ " + fix_line, fill=WINE_RED, font=tiny_font, anchor='la')
-                        else:
-                            draw.text((img_width // 2, current_y), "→ " + fix_line, fill=WINE_RED, font=tiny_font, anchor='mm')
-                        current_y += 30
+                        draw.text((padding + 25, current_y), "→ " + fix_line, fill=WINE_RED, font=tiny_font, anchor='la')
+                        current_y += 35
 
-                    current_y += 35  # 每项之间的间距（增加）
+                    current_y += 40  # 每项之间的间距（增加）
                 else:
                     break
 

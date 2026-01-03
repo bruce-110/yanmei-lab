@@ -1,9 +1,0 @@
-entrypoint = "qwen_main.py"
-
-[deployment]
-run = "streamlit run qwen_main.py --server.headless true"
-deploymentTarget = "autoscale"
-
-[autoscale]
-enabled = true
-

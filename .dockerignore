@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 环境变量
+.env
+firebase-key.json
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 数据和日志
+*.log
+data/
+*.jpg
+*.png
+*.jpeg
+
+# 文档
+*.md
+!README.md
+
+# 其他
+.DS_Store
+*.sh

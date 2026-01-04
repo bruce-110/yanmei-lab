@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  yanmei-lab:
+    build: .
+    container_name: yanmei-lab
+    ports:
+      - "8501:8501"
+    environment:
+      # 通义千问 API Key（必须设置）
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+
+      # Streamlit 配置
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_ENABLE_CORS=false
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
+
+    volumes:
+      # 持久化数据
+      - ./data:/app/data
+      - ./santorini_data.csv:/app/santorini_data.csv
+      - ./santorini_usage.json:/app/santorini_usage.json
+      - ./santorini_users.json:/app/santorini_users.json
+
+    restart: unless-stopped
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M

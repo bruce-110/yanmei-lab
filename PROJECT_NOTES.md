@@ -14,6 +14,26 @@
 
 ## 已修复的Bug
 
+### 2026-01-04: 图片方向问题（移动端 EXIF 处理）
+**问题**: 手机端上传图片后，图片会自动翻转，人物不能保持居中
+
+**原因**: 手机拍摄的照片包含 EXIF 方向元数据，但 PIL 打开图片时默认不处理这些信息
+
+**修复**:
+1. 在 `qwen_main.py:9` 添加 `ImageOps` 导入：
+```python
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+```
+
+2. 在 `qwen_main.py:833-835` 添加 EXIF 处理：
+```python
+# 修复移动端图片方向问题（处理 EXIF 信息）
+# 手机拍摄的照片包含方向元数据，需要自动旋转以正确显示
+image = ImageOps.exif_transpose(image)
+```
+
+**提交**: `c372124` - "Fix: Correct image orientation for mobile uploads (EXIF handling)"
+
 ### 2025-01-04: AttributeError is_subscribed
 **问题**: `AttributeError: This app has encountered an error. The original error message is redacted to prevent data leaks.`
 
@@ -90,6 +110,48 @@ streamlit run qwen_main.py --server.headless true &
 ---
 
 ## 对话历史记录
+
+### 2026-01-04: 图片方向问题修复（移动端优化）
+
+**问题**：
+- 手机端上传的图片显示时自动翻转
+- 人物不能保持居中
+- 用户反馈：上传到手机端后图片方向错误
+
+**解决过程**：
+1. 分析问题：识别为典型的移动端 EXIF 方向信息问题
+2. 定位代码：`qwen_main.py:831` 图片上传处理部分
+3. 修复方案：
+   - 导入 `ImageOps` 模块
+   - 在图片打开后应用 `ImageOps.exif_transpose()`
+   - 自动检测并修正 EXIF 方向元数据
+4. 本地测试通过
+5. 推送到 GitHub，Streamlit Cloud 自动部署
+
+**成果**：
+- ✅ 修复移动端图片方向问题
+- ✅ 确保所有设备上图片正确显示
+- ✅ 代码已部署到生产环境
+
+**技术要点**：
+- 手机照片包含 EXIF Orientation 标签
+- PIL 默认不自动处理 EXIF 方向
+- 使用 `ImageOps.exif_transpose()` 自动修正方向
+- 确保用户上传的图片在任何设备上都正确显示
+
+**Git 提交**：
+```bash
+# Commit: c372124
+git add .
+git commit -m "Fix: Correct image orientation for mobile uploads (EXIF handling)"
+git push
+```
+
+**相关文件**：
+- `qwen_main.py:9` - 添加 ImageOps 导入
+- `qwen_main.py:833-835` - 添加 EXIF 处理逻辑
+
+---
 
 ### 2026-01-04: Bug修复与项目文档化
 

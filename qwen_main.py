@@ -766,6 +766,10 @@ def main():
         st.session_state.detected_lang = detect_language_from_ip()
     if 'is_subscribed' not in st.session_state:
         st.session_state.is_subscribed = False
+    if 'uploaded_image' not in st.session_state:
+        st.session_state.uploaded_image = None
+    if 'analysis_in_progress' not in st.session_state:
+        st.session_state.analysis_in_progress = False
 
     # 顶部布局
     c1, c2 = st.columns([4, 1])
@@ -819,6 +823,30 @@ def main():
     # 上传组件
     uploaded_file = st.file_uploader(" ", type=['jpg', 'jpeg', 'png'])
 
+    # 当有新文件上传时，保存到 session state
+    if uploaded_file is not None:
+        try:
+            image = Image.open(uploaded_file)
+            # 修复移动端图片方向问题（处理 EXIF 信息）
+            # 手机拍摄的照片包含方向元数据，需要自动旋转以正确显示
+            image = ImageOps.exif_transpose(image)
+            st.session_state.uploaded_image = image
+
+            # 显示上传的图片
+            st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)
+            st.image(image, width=700)
+            st.markdown("</div>", unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"**图片加载失败**\n\n{str(e)}")
+            print(f"[ERROR] 图片加载失败: {e}")
+            import traceback
+            traceback.print_exc()
+    elif st.session_state.uploaded_image is not None:
+        # 如果没有新上传的文件，但 session state 中有图片，显示它
+        st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)
+        st.image(st.session_state.uploaded_image, width=700)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     # 显示订阅用户专享提示
     if st.session_state.is_subscribed:
         st.markdown("""
@@ -827,36 +855,39 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-    if uploaded_file:
-        image = Image.open(uploaded_file)
-
-        # 修复移动端图片方向问题（处理 EXIF 信息）
-        # 手机拍摄的照片包含方向元数据，需要自动旋转以正确显示
-        image = ImageOps.exif_transpose(image)
-
-        # 显示上传的图片
-        st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)
-        st.image(image, width=700)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        # 分析按钮（无限次使用）
-        if st.button(T['btn'], type="primary"):
+    # 分析按钮（只在有图片时显示）
+    if st.session_state.uploaded_image is not None:
+        if st.button(T['btn'], type="primary", key="analyze_button"):
             if not api_key:
                 st.error(T['no_key'])
             else:
-                with st.spinner(T['analyzing']):
-                    result, duration, err = analyze_image_qwen(image, api_key, lang_code)
+                st.session_state.analysis_in_progress = True
+                try:
+                    with st.spinner(T['analyzing']):
+                        result, duration, err = analyze_image_qwen(st.session_state.uploaded_image, api_key, lang_code)
 
-                    if err:
-                        st.error(f"**分析失败**\n\n{err}")
+                        if err:
+                            st.error(f"**分析失败**\n\n{err}")
+                            print(f"[ERROR] 分析失败: {err}")
 
-                    elif result:
-                        # 保存结果到 session state
-                        st.session_state.last_result = result
-                        st.session_state.last_image = image
-                        st.session_state.last_lang_code = lang_code
+                        elif result:
+                            # 保存结果到 session state
+                            st.session_state.last_result = result
+                            st.session_state.last_image = st.session_state.uploaded_image
+                            st.session_state.last_lang_code = lang_code
 
-                        log_data(result.get("score"), result.get("visual_age"), result.get("roast"), duration)
+                            log_data(result.get("score"), result.get("visual_age"), result.get("roast"), duration)
+
+                            # 成功后清除上传的图片，避免重复分析
+                            st.session_state.uploaded_image = None
+                            st.rerun()
+                except Exception as e:
+                    st.error(f"**系统错误**\n\n{str(e)}")
+                    print(f"[ERROR] 系统异常: {e}")
+                    import traceback
+                    traceback.print_exc()
+                finally:
+                    st.session_state.analysis_in_progress = False
 
     # 显示分析结果（如果有的话）
     if st.session_state.last_result is not None:

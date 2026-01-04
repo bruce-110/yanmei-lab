@@ -159,6 +159,88 @@ streamlit run qwen_main.py --server.headless true &
 
 ## 对话历史记录
 
+### 2026-01-04: 移动端兼容性优化（响应式设计）
+
+**问题**：
+- 电脑端可以正常打开应用
+- 手机端无法打开或体验很差
+- 用户反馈移动端无法使用
+
+**问题分析**：
+- 不是网络访问问题（Streamlit Cloud 国内可访问）
+- 是移动端兼容性问题
+- 缺少响应式设计和移动端适配
+
+**解决过程**：
+1. **Streamlit 配置优化**：
+   - 添加 `menu_items=None` 隐藏移动端菜单
+   - 优化页面配置
+
+2. **Viewport 和容器优化**：
+   - 添加响应式 viewport meta 标签
+   - 设置 `max-width: 100%` 防止内容溢出
+   - 添加 `overflow-x: hidden` 防止横向滚动
+
+3. **移动端优先的 CSS**（使用 `@media` 查询）：
+   - **字体大小调整**：
+     - 标题：3.5rem → 2rem（移动端）
+     - 评分数字：4.5rem → 3rem（移动端）
+     - 副标题：1rem → 0.9rem（移动端）
+   - **间距优化**：
+     - 结果卡片 padding：30px → 20px
+     - 列表项 padding：20px → 15px
+     - 章节标题 margin：50px → 30px
+   - **按钮优化**：
+     - 添加 `-webkit-tap-highlight-color: transparent`
+     - 添加 `:active` 状态反馈
+     - 调整移动端按钮大小
+   - **上传组件**：
+     - 移动端 padding：50px → 30px
+     - 移动端圆角：20px → 15px
+
+4. **图片显示优化**（关键）：
+   - **修改前**：`st.image(image, width=700)` - 固定宽度
+   - **修改后**：`st.image(image, use_container_width=True)` - 自适应
+   - 图片现在可以自动适应任何屏幕尺寸
+
+**成果**：
+- ✅ 完整的移动端响应式设计
+- ✅ 所有元素在移动端正确显示
+- ✅ 图片自适应屏幕大小
+- ✅ 触摸友好的按钮交互
+- ✅ 防止横向滚动
+- ✅ 优化的字体大小和间距
+- ✅ 更好的移动端阅读体验
+
+**技术要点**：
+- 使用 `@media (max-width: 768px)` 检测移动设备
+- Streamlit 的 `use_container_width=True` 自适应图片
+- CSS 媒体查询实现响应式布局
+- `-webkit-tap-highlight-color` 优化触摸体验
+- Viewport meta 标签确保正确的缩放
+
+**Git 提交**：
+```bash
+# Commit: 916e807
+git add .
+git commit -m "feat: Add comprehensive mobile responsiveness optimizations"
+git push
+```
+
+**相关文件**：
+- `qwen_main.py:34-40` - Streamlit 配置
+- `qwen_main.py:48-306` - 移动端 CSS 优化
+- `qwen_main.py:977-991` - 图片显示优化
+
+**测试建议**：
+1. 在手机浏览器访问 https://yanmei-lab.streamlit.app/
+2. 测试图片上传和显示
+3. 测试分析功能
+4. 检查所有元素是否正确显示
+5. 确认没有横向滚动
+
+---
+
 ### 2026-01-04: 添加国内部署方案
 
 **问题**：

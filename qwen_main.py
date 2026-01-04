@@ -6,7 +6,7 @@ YANMEI LAB / 颜美实验室 - 通义千问版本
 
 import streamlit as st
 from dashscope import MultiModalConversation
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import json
 import base64
 from io import BytesIO
@@ -829,6 +829,10 @@ def main():
 
     if uploaded_file:
         image = Image.open(uploaded_file)
+
+        # 修复移动端图片方向问题（处理 EXIF 信息）
+        # 手机拍摄的照片包含方向元数据，需要自动旋转以正确显示
+        image = ImageOps.exif_transpose(image)
 
         # 显示上传的图片
         st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)

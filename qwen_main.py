@@ -31,7 +31,13 @@ USE_FIREBASE = False
 # ============================================================================
 # 1. 页面配置 & 核心样式
 # ============================================================================
-st.set_page_config(page_title="YANMEI LAB / 颜美实验室", page_icon="", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="YANMEI LAB / 颜美实验室",
+    page_icon="",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+    menu_items=None  # 移动端隐藏菜单
+)
 
 # 极简现代配色方案（参考莫兰迪色系）
 BG_COLOR = "#F5F2F0"  # 浅米白/乳白色背景
@@ -41,22 +47,65 @@ LIGHT_GRAY = "#E8E4E1"  # 浅灰色辅助
 
 st.markdown(f"""
 <style>
+    /* 移动端 viewport 优化 */
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700&family=Playfair+Display:wght@700;900&display=swap');
 
-    [data-testid="stAppViewContainer"] {{ background-color: {BG_COLOR}; color: {DARK_GRAY}; }}
+    /* 全局容器 - 移动端优化 */
+    [data-testid="stAppViewContainer"] {{
+        background-color: {BG_COLOR};
+        color: {DARK_GRAY};
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }}
+
     [data-testid="stHeader"] {{ display: none; }}
     [data-testid="stToolbar"] {{ visibility: hidden; }}
 
-    body {{ font-family: 'Noto Sans SC', sans-serif; }}
-    h1, h2, h3, .hero-title, .score-num {{ font-family: 'Playfair Display', serif; }}
+    /* 移动端主体优化 */
+    .main .block-container {{
+        max-width: 100% !important;
+        padding: 1rem !important;
+    }}
 
-    /* 侧边栏 */
+    body {{
+        font-family: 'Noto Sans SC', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }}
+
+    h1, h2, h3, .hero-title, .score-num {{
+        font-family: 'Playfair Display', serif;
+    }}
+
+    /* 移动端字体大小 */
+    @media (max-width: 768px) {{
+        .hero-title {{
+            font-size: 2rem !important;
+        }}
+        .hero-subtitle {{
+            font-size: 0.9rem !important;
+        }}
+        .score-num {{
+            font-size: 3rem !important;
+        }}
+    }}
+
+    /* 侧边栏 - 移动端优化 */
     [data-testid="stSidebar"] {{
         background-color: #FFFFFF;
         border-right: 1px solid {LIGHT_GRAY};
     }}
 
-    /* 上传组件 */
+    @media (max-width: 768px) {{
+        [data-testid="stSidebar"] {{
+            width: 100% !important;
+            max-width: 100% !important;
+        }}
+    }}
+
+    /* 上传组件 - 移动端优化 */
     [data-testid='stFileUploader'] {{
         margin-top: 20px;
         position: relative;
@@ -69,6 +118,14 @@ st.markdown(f"""
         padding: 50px 0 !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         transition: all 0.3s ease;
+    }}
+
+    /* 移动端上传组件优化 */
+    @media (max-width: 768px) {{
+        [data-testid='stFileUploader'] section {{
+            padding: 30px 0 !important;
+            border-radius: 15px !important;
+        }}
     }}
 
     [data-testid='stFileUploader'] section:hover {{
@@ -105,7 +162,14 @@ st.markdown(f"""
         visibility: visible !important;
     }}
 
-    /* 结果卡片 - 极简设计 */
+    /* 移动端上传文字优化 */
+    @media (max-width: 768px) {{
+        [data-testid='stFileUploader'] section::before {{
+            font-size: 16px !important;
+        }}
+    }}
+
+    /* 结果卡片 - 极简设计 + 移动端优化 */
     .result-card {{
         background: white;
         border-radius: 20px;
@@ -116,6 +180,15 @@ st.markdown(f"""
         animation: fadeIn 0.8s ease-out;
     }}
 
+    /* 移动端结果卡片 */
+    @media (max-width: 768px) {{
+        .result-card {{
+            padding: 20px !important;
+            border-radius: 15px !important;
+            margin-top: 15px !important;
+        }}
+    }}
+
     @keyframes fadeIn {{
         from {{ opacity: 0; transform: translateY(20px); }}
         to {{ opacity: 1; transform: translateY(0); }}
@@ -124,10 +197,25 @@ st.markdown(f"""
     .score-num {{ font-size: 4.5rem; color: {WINE_RED}; line-height: 1; font-weight: 900; }}
     .score-label {{ color: #94A3B8; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; margin-top: 10px; }}
 
+    /* 移动端评分数字 */
+    @media (max-width: 768px) {{
+        .score-num {{ font-size: 3rem !important; }}
+        .score-label {{ font-size: 0.75rem !important; }}
+    }}
+
     .roast-text {{
         font-size: 1.1rem; line-height: 1.8; color: {DARK_GRAY};
         background: {BG_COLOR}; padding: 30px; border-radius: 12px;
         border-left: 4px solid {WINE_RED}; margin: 30px 0; font-style: italic;
+    }}
+
+    /* 移动端点评文字 */
+    @media (max-width: 768px) {{
+        .roast-text {{
+            font-size: 1rem !important;
+            padding: 20px !important;
+            margin: 20px 0 !important;
+        }}
     }}
 
     .list-item {{
@@ -137,8 +225,22 @@ st.markdown(f"""
     }}
     .list-item:hover {{ transform: translateX(5px); border-color: {WINE_RED}; }}
 
+    /* 移动端列表项 */
+    @media (max-width: 768px) {{
+        .list-item {{
+            padding: 15px !important;
+            margin-bottom: 10px !important;
+        }}
+    }}
+
     .highlight-problem {{ color: #666666; font-weight: 500; font-size: 0.95rem; display:block; margin-bottom:5px; }}
     .highlight-solution {{ color: {WINE_RED}; font-weight: bold; font-size: 1rem; display:block; margin-top:8px; }}
+
+    /* 移动端文字大小 */
+    @media (max-width: 768px) {{
+        .highlight-problem {{ font-size: 0.9rem !important; }}
+        .highlight-solution {{ font-size: 0.95rem !important; }}
+    }}
 
     .section-header {{
         font-size: 1.4rem; color: {WINE_RED}; font-weight: 700;
@@ -149,6 +251,19 @@ st.markdown(f"""
         background: {WINE_RED}; margin-right: 12px; border-radius: 4px;
     }}
 
+    /* 移动端章节标题 */
+    @media (max-width: 768px) {{
+        .section-header {{
+            font-size: 1.2rem !important;
+            margin-top: 30px !important;
+            margin-bottom: 20px !important;
+        }}
+        .section-header::before {{
+            width: 5px !important;
+            height: 20px !important;
+        }}
+    }}
+
     button[kind="primary"] {{
         background-color: {WINE_RED} !important;
         border: none !important; border-radius: 50px !important;
@@ -156,12 +271,39 @@ st.markdown(f"""
         font-size: 1.1rem !important; width: 100%;
         box-shadow: 0 10px 25px rgba(139, 75, 92, 0.25);
         transition: 0.3s;
+        -webkit-tap-highlight-color: transparent;
     }}
     button[kind="primary"]:hover {{ background-color: #6B3A47 !important; transform: translateY(-2px); }}
+    button[kind="primary"]:active {{ transform: scale(0.98); }}
+
+    /* 移动端按钮优化 */
+    @media (max-width: 768px) {{
+        button[kind="primary"] {{
+            padding: 14px 30px !important;
+            font-size: 1rem !important;
+        }}
+    }}
 
     .hero-title {{ font-size: 3.5rem; color: {DARK_GRAY}; margin-bottom: 10px; font-weight: 300; text-align: center; letter-spacing: 3px; }}
     .hero-subtitle {{ color: #64748B; font-size: 1rem; letter-spacing: 2px; font-weight: 300; text-align: center; margin-bottom: 40px; }}
     .brand-text {{ font-size: 1rem; font-weight: 700; color: {WINE_RED}; letter-spacing: 3px; margin-bottom: 10px; text-transform: uppercase; }}
+
+    /* 移动端标题优化 */
+    @media (max-width: 768px) {{
+        .hero-title {{
+            font-size: 2rem !important;
+            letter-spacing: 2px !important;
+        }}
+        .hero-subtitle {{
+            font-size: 0.9rem !important;
+            letter-spacing: 1px !important;
+            margin-bottom: 30px !important;
+        }}
+        .brand-text {{
+            font-size: 0.9rem !important;
+            letter-spacing: 2px !important;
+        }}
+    }}
 
 </style>
 """, unsafe_allow_html=True)
@@ -832,9 +974,10 @@ def main():
             image = ImageOps.exif_transpose(image)
             st.session_state.uploaded_image = image
 
-            # 显示上传的图片
+            # 显示上传的图片 - 移动端自适应
             st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)
-            st.image(image, width=700)
+            # 使用 use_container_width=True 使图片自适应容器宽度
+            st.image(image, use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
         except Exception as e:
             st.error(f"**图片加载失败**\n\n{str(e)}")
@@ -844,7 +987,8 @@ def main():
     elif st.session_state.uploaded_image is not None:
         # 如果没有新上传的文件，但 session state 中有图片，显示它
         st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)
-        st.image(st.session_state.uploaded_image, width=700)
+        # 使用 use_container_width=True 使图片自适应容器宽度
+        st.image(st.session_state.uploaded_image, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     # 显示订阅用户专享提示
